@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash Banana - Image & Text Processing</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        textarea, input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 10px;
+            display: none;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            min-height: 50px;
+            white-space: pre-wrap;
+            color: #333;
+            border-left: 4px solid #3498db;
+        }
+        
+        #result.error {
+            border-left-color: #e74c3c;
+            color: #e74c3c;
+            background-color: #fde8e8;
+        }
+        .loading {
+            text-align: center;
+            display: none;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flash Banana</h1>
+        <p>Upload an image and enter a prompt to process it with Gemini 2.5 Flash</p>
+        
+        <div class="form-group">
+            <label for="image">Upload Image:</label>
+            <input type="file" id="image" accept="image/*">
+            <img id="preview" alt="Image preview">
+        </div>
+        
+        <div class="form-group">
+            <label for="prompt">Enter your prompt:</label>
+            <textarea id="prompt" rows="4" placeholder="Describe what you want to do with the image..."></textarea>
+        </div>
+        
+        <button id="process">Process with Gemini 2.5 Flash</button>
+        
+        <div class="loading" id="loading">
+            <p>Processing your request with Gemini 2.5 Flash...</p>
+        </div>
+        
+        <div class="form-group">
+            <label>Result:</label>
+            <div id="result">Your result will appear here...</div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('preview');
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('process').addEventListener('click', async function() {
+            const imageInput = document.getElementById('image');
+            const prompt = document.getElementById('prompt').value.trim();
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            
+            if (!imageInput.files || imageInput.files.length === 0) {
+                alert('Please select an image');
+                return;
+            }
+            
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', imageInput.files[0]);
+            formData.append('prompt', prompt);
+            
+            loadingDiv.style.display = 'block';
+            resultDiv.textContent = 'Processing...';
+            
+            try {
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to process image');
+                }
+                
+                if (data.result) {
+                    resultDiv.textContent = data.result;
+                    resultDiv.style.color = '#333';
+                } else {
+                    throw new Error('No result returned from the server');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.classList.add('error');
+                resultDiv.scrollIntoView({ behavior: 'smooth' });
+            } finally {
+                loadingDiv.style.display = 'none';
+                resultDiv.classList.remove('error');
+            }
+        });
+    </script>
+</body>
+</html>
